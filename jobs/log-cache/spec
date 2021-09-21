@@ -51,6 +51,14 @@ properties:
     description: "The amount of time between log-cache checking if it needs to prune"
     default: "500ms"
 
+  gc_on_prune:
+    description: "Force garbage collection to run after every cache prune"
+    default: false
+
+  prunes_per_gc:
+    description: "Number of consecutive prunes to do before running garbage collection. Only works in conjunction with gc_on_prune"
+    default: 1
+
   promql.query_timeout:
     description: "The maximum allowed runtime for a single PromQL query. Smaller timeouts are recommended."
     default: "10s"

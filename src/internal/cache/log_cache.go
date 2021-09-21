@@ -41,6 +41,8 @@ type LogCache struct {
 	memoryLimit        uint64
 	queryTimeout       time.Duration
 	truncationInterval time.Duration
+	gcOnPrune          bool
+	prunesPerGC        int64
 
 	// Cluster Properties
 	addr     string
@@ -64,6 +66,8 @@ func New(m Metrics, logger *log.Logger, opts ...LogCacheOption) *LogCache {
 		memoryLimitPercent: 50,
 		queryTimeout:       10 * time.Second,
 		truncationInterval: 500 * time.Millisecond,
+		gcOnPrune:          false,
+		prunesPerGC:        1,
 
 		addr:     ":8080",
 		dialOpts: []grpc.DialOption{grpc.WithInsecure()},
@@ -97,6 +101,25 @@ func WithMaxPerSource(size int) LogCacheOption {
 func WithTruncationInterval(interval time.Duration) LogCacheOption {
 	return func(c *LogCache) {
 		c.truncationInterval = interval
+	}
+}
+
+// WithGCOnPrune returns a LogCacheOption that determines whether
+// garbage collection is run as part of the prune process.
+// Defaults to false.
+func WithGCOnPrune(toggle bool) LogCacheOption {
+	return func(c *LogCache) {
+		c.gcOnPrune = toggle
+	}
+}
+
+// WithPrunesPerGC returns a LogCacheOption that configures the
+// number of consecutive prunes needed for garbage collection
+// to be called when GCOnPrune is set to true.
+// Defaults to 1.
+func WithPrunesPerGC(consecutivePrunes int64) LogCacheOption {
+	return func(c *LogCache) {
+		c.prunesPerGC = consecutivePrunes
 	}
 }
 
@@ -165,7 +188,7 @@ func (c *LogCache) Start() {
 		analyzer = NewMemoryAnalyzer(c.metrics)
 	}
 	p := store.NewPruneConsultant(2, c.memoryLimitPercent, analyzer)
-	store := store.NewStore(c.maxPerSource, c.truncationInterval, p, c.metrics)
+	store := store.NewStore(c.maxPerSource, c.truncationInterval, c.gcOnPrune, c.prunesPerGC, p, c.metrics)
 	c.setupRouting(store)
 }
 

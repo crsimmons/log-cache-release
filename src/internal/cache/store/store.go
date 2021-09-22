@@ -591,3 +591,8 @@ func (h *ExpirationHeap) Pop() interface{} {
 func calculateCachePeriod(oldestTimestamp int64) int64 {
 	return (time.Now().UnixNano() - oldestTimestamp) / int64(time.Millisecond)
 }
+
+// Used in tests
+func (store *Store) GetConsecutiveTruncations() int64 {
+	return store.consecutiveTruncation
+}

@@ -508,6 +508,104 @@ var _ = Describe("Store", func() {
 			return int64(len(envelopes))
 		}).Should(BeNumerically("<=", 10000))
 	})
+
+	It("doesn't call garbage collection with GCOnPrune disabled", func() {
+		e1 := buildTypedEnvelope(1, "a", &loggregator_v2.Log{})
+		e2 := buildTypedEnvelope(2, "a", &loggregator_v2.Counter{})
+		e3 := buildTypedEnvelope(3, "a", &loggregator_v2.Gauge{})
+		e4 := buildTypedEnvelope(3, "a", &loggregator_v2.Timer{})
+		e5 := buildTypedEnvelope(3, "a", &loggregator_v2.Event{})
+
+		s.Put(e1, e1.GetSourceId())
+		s.Put(e2, e2.GetSourceId())
+		s.Put(e3, e3.GetSourceId())
+		s.Put(e4, e4.GetSourceId())
+		s.Put(e5, e5.GetSourceId())
+
+		// prune 1 envelope 3 times in a row
+		sp.SetNumberToPrune(1)
+		s.WaitForTruncationToComplete()
+		Expect(s.GetConsecutiveTruncations()).To(Equal(int64(1)))
+		sp.SetNumberToPrune(1)
+		s.WaitForTruncationToComplete()
+		Expect(s.GetConsecutiveTruncations()).To(Equal(int64(2)))
+		sp.SetNumberToPrune(1)
+		s.WaitForTruncationToComplete()
+		Expect(s.GetConsecutiveTruncations()).To(Equal(int64(3)))
+		// no envelopes to prune resets the counter
+		sp.SetNumberToPrune(0)
+		s.WaitForTruncationToComplete()
+		Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+	})
+
+	Context("when GCOnPrune is enabled", func() {
+		It("calls garbage collect once per truncation by default", func() {
+			s = store.NewStore(5, TruncationInterval, true, PrunesPerGC, sp, sm)
+
+			e1 := buildTypedEnvelope(1, "a", &loggregator_v2.Log{})
+			e2 := buildTypedEnvelope(2, "a", &loggregator_v2.Counter{})
+			e3 := buildTypedEnvelope(3, "a", &loggregator_v2.Gauge{})
+			e4 := buildTypedEnvelope(3, "a", &loggregator_v2.Timer{})
+			e5 := buildTypedEnvelope(3, "a", &loggregator_v2.Event{})
+
+			s.Put(e1, e1.GetSourceId())
+			s.Put(e2, e2.GetSourceId())
+			s.Put(e3, e3.GetSourceId())
+			s.Put(e4, e4.GetSourceId())
+			s.Put(e5, e5.GetSourceId())
+
+			// prune 1 envelope 3 times in a row
+			// expect GC to run each time resetting the counter
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+			// no envelopes to prune resets the counter
+			sp.SetNumberToPrune(0)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+		})
+
+		It("calls garbage collect once per PrunesPerGC truncations when set", func() {
+			// set PrunesPerGC to 2
+			s = store.NewStore(5, TruncationInterval, true, 2, sp, sm)
+
+			e1 := buildTypedEnvelope(1, "a", &loggregator_v2.Log{})
+			e2 := buildTypedEnvelope(2, "a", &loggregator_v2.Counter{})
+			e3 := buildTypedEnvelope(3, "a", &loggregator_v2.Gauge{})
+			e4 := buildTypedEnvelope(3, "a", &loggregator_v2.Timer{})
+			e5 := buildTypedEnvelope(3, "a", &loggregator_v2.Event{})
+
+			s.Put(e1, e1.GetSourceId())
+			s.Put(e2, e2.GetSourceId())
+			s.Put(e3, e3.GetSourceId())
+			s.Put(e4, e4.GetSourceId())
+			s.Put(e5, e5.GetSourceId())
+
+			// first prune of 1 envelope won't call gc
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(1)))
+			// second prune of 1 envelope puts counter >= PrunesPerGC
+			// so gc is called
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+			// next prune of 1 envelope won't call gc
+			sp.SetNumberToPrune(1)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(1)))
+			// no envelopes to prune resets the counter
+			sp.SetNumberToPrune(0)
+			s.WaitForTruncationToComplete()
+			Expect(s.GetConsecutiveTruncations()).To(Equal(int64(0)))
+		})
+	})
 })
 
 func buildEnvelope(timestamp int64, sourceID string) *loggregator_v2.Envelope {

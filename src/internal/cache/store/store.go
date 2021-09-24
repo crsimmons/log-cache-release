@@ -52,7 +52,6 @@ type Store struct {
 	truncationCompleted chan bool
 	truncationInterval  time.Duration
 
-	gcOnPrune   bool
 	prunesPerGC int64
 
 	consecutiveTruncation int64
@@ -68,7 +67,7 @@ type Metrics struct {
 	memoryUtilization  metrics.Gauge
 }
 
-func NewStore(maxPerSource int, truncationInterval time.Duration, gcOnPrune bool, prunesPerGC int64, mc MemoryConsultant, m MetricsRegistry) *Store {
+func NewStore(maxPerSource int, truncationInterval time.Duration, mc MemoryConsultant, m MetricsRegistry) *Store {
 	store := &Store{
 		maxPerSource:      maxPerSource,
 		maxTimestampFudge: 4000,
@@ -80,8 +79,7 @@ func NewStore(maxPerSource int, truncationInterval time.Duration, gcOnPrune bool
 		truncationCompleted: make(chan bool),
 
 		truncationInterval: truncationInterval,
-		gcOnPrune:          gcOnPrune,
-		prunesPerGC:        prunesPerGC,
+		prunesPerGC:        int64(3),
 	}
 
 	store.mc.SetMemoryReporter(store.metrics.memoryUtilization)
@@ -295,7 +293,7 @@ func (store *Store) truncate() {
 
 	atomic.AddInt64(&store.consecutiveTruncation, 1)
 
-	if store.gcOnPrune && store.consecutiveTruncation >= store.prunesPerGC {
+	if store.consecutiveTruncation >= store.prunesPerGC {
 		runtime.GC()
 		atomic.CompareAndSwapInt64(&store.consecutiveTruncation, store.consecutiveTruncation, 0)
 	}

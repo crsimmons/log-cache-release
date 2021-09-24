@@ -37,16 +37,6 @@ type Config struct {
 	// Default is 500ms.
 	TruncationInterval time.Duration `env:"TRUNCATION_INTERVAL, report"`
 
-	// GCOnPrune determines whether to execute runtime.GC() as part of the
-	// pruning process rather than relying on automatic garbage collection.
-	// Default is false.
-	GCOnPrune bool `env:"GC_ON_PRUNE, report"`
-
-	// PrunesPerGC sets the number of consecutive prunes needed to trigger
-	// a manual GC. Only works in conjunction with GCOnPrune.
-	// Default is 1 (GC every prune)
-	PrunesPerGC int64 `env:"PRUNES_PER_GC, report"`
-
 	// NodeIndex determines what data the node stores. It splits up the range
 	// of 0 - 18446744073709551615 evenly. If data falls out of range of the
 	// given node, it will be routed to theh correct one.
@@ -72,8 +62,6 @@ func LoadConfig() (*Config, error) {
 		MemoryLimitPercent: 50,
 		MaxPerSource:       100000,
 		TruncationInterval: 500 * time.Millisecond,
-		GCOnPrune:          false,
-		PrunesPerGC:        1,
 		MetricsServer: config.MetricsServer{
 			Port: 6060,
 		},

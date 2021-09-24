@@ -76,8 +76,6 @@ func main() {
 		WithMaxPerSource(cfg.MaxPerSource),
 		WithQueryTimeout(cfg.QueryTimeout),
 		WithTruncationInterval(cfg.TruncationInterval),
-		WithGCOnPrune(cfg.GCOnPrune),
-		WithPrunesPerGC(cfg.PrunesPerGC),
 	}
 	var transport grpc.DialOption
 	if cfg.TLS.HasAnyCredential() {

@@ -63,7 +63,7 @@ func New(m Metrics, logger *log.Logger, opts ...LogCacheOption) *LogCache {
 		maxPerSource:       100000,
 		memoryLimitPercent: 50,
 		queryTimeout:       10 * time.Second,
-		truncationInterval: 500 * time.Millisecond,
+		truncationInterval: 1 * time.Second,
 
 		addr:     ":8080",
 		dialOpts: []grpc.DialOption{grpc.WithInsecure()},
@@ -93,7 +93,7 @@ func WithMaxPerSource(size int) LogCacheOption {
 }
 
 // WithTruncationInterval returns a LogCacheOption that configures the
-// interval in ms on the store's truncation loop. Defaults to 500ms.
+// interval in ms on the store's truncation loop. Defaults to 1s.
 func WithTruncationInterval(interval time.Duration) LogCacheOption {
 	return func(c *LogCache) {
 		c.truncationInterval = interval

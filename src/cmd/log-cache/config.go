@@ -34,7 +34,7 @@ type Config struct {
 	// TruncationInterval sets the delay between invocations of the
 	// truncation loop. This is where log-cache checks if memory utilization
 	// has gone above MemoryLimitPercent and evicts envelopes if it has.
-	// Default is 500ms.
+	// Default is 1s.
 	TruncationInterval time.Duration `env:"TRUNCATION_INTERVAL, report"`
 
 	// NodeIndex determines what data the node stores. It splits up the range
@@ -61,7 +61,7 @@ func LoadConfig() (*Config, error) {
 		QueryTimeout:       10 * time.Second,
 		MemoryLimitPercent: 50,
 		MaxPerSource:       100000,
-		TruncationInterval: 500 * time.Millisecond,
+		TruncationInterval: 1 * time.Second,
 		MetricsServer: config.MetricsServer{
 			Port: 6060,
 		},
